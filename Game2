@@ -1,0 +1,247 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System;
+using TMPro;
+using UnityEngine.SceneManagement;
+using System.IO;
+
+[System.Serializable]
+public class SaveData
+{
+    public string bestName;
+    public int lastDate_hour;
+    public int lastDate_day;
+    public List<string> date;
+}
+
+public class Game2 : MonoBehaviour
+{
+    public TMP_InputField currentNameIF;
+    public TextMeshProUGUI bestNameText;
+    private string bestName;
+    //System//
+    //Lognin
+    DateTime nowDate;
+    DateTime nowfirstDate;
+    private int ts;
+    private int ts_day;
+    private int tts;
+    private int hp;
+    private int todayDate;
+    private int todayDate_hour;
+    private string todayDate_100;
+    private int lastDate;
+    private int lastDate_hour;
+    private int lastDate_day;
+    private Animator animator;
+    private bool isrecord = false;
+    private bool isreward = false;
+    private bool isdelete = false;
+    public TextMeshProUGUI delete_Text;
+    public TextMeshProUGUI delete_Text2;
+    public TextMeshProUGUI DateTimeText;
+    public TextMeshProUGUI DateHourText;
+    public TextMeshProUGUI Date100_Text;
+    public TextMeshProUGUI Hp_Text;
+    public TextMeshProUGUI Start_Text;
+    public GameObject record_Ob;
+    public GameObject dish_Ob;
+    public GameObject delete_Ob;
+
+
+    SaveData data;
+
+    void Start()
+    {
+        data = new SaveData();
+
+        //data = GameObject.Find("obj").GetComponent<SaveData>();
+        //data = gameObject.AddComponent<SaveData>();
+        data.date = new List<string>();
+        GetSaveData();
+        Login();
+        OnUI();
+        SetSaveData();
+        animator = GetComponent<Animator>();
+        record_Ob.SetActive(false);
+        dish_Ob.SetActive(false);
+        delete_Ob.SetActive(false);
+        Start_Text.text = "タップ";
+    }
+
+    void Login()
+    {
+        nowDate = DateTime.Now;
+        todayDate = nowDate.Year * 525600 + nowDate.Month * 43800 + nowDate.Day * 1440 + nowDate.Hour * 60 + nowDate.Minute;
+        todayDate_hour = nowDate.Year * 8760 + nowDate.Month * 730 + nowDate.Day * 24 + nowDate.Hour;
+        todayDate_100 = nowDate.ToString();
+        ts = todayDate_hour - lastDate_hour;
+        ts_day = nowDate.Day - lastDate_day;
+        hp = ts_day;
+    }
+
+    void Update()
+    {
+    }
+
+
+    public void AfterFishye() //エサやる
+    {
+        //Start_Text.text = "";
+        Start_Text.enabled = false;
+        if (ts_day >= 1)
+        {
+            animator.SetBool("eat", true);
+            dish_Ob.SetActive(true);
+            data.date.Add(todayDate_100);
+            ts_day = 0;
+            hp = 0;
+            StartCoroutine(DelayCoroutine());
+        }
+        else
+        {
+            if (isreward == true)
+            {
+                animator.SetBool("eat", true);
+                dish_Ob.SetActive(true);
+                isreward = false;
+                hp = 0;
+                StartCoroutine(DelayCoroutine());
+            }
+            else
+            {
+
+            }
+        }
+    }
+
+    private IEnumerator DelayCoroutine()
+    {
+        yield return new WaitForSeconds(3);
+        animator.SetBool("eat", false);
+        dish_Ob.SetActive(false);
+    }
+
+    public void OnSetButtonClicked() //OK
+    {
+        bestName = currentNameIF.text;
+    }
+
+    public void SetSaveData() //save
+    {
+        data.lastDate_hour = todayDate_hour;
+        data.lastDate_day = nowDate.Day;
+        data.bestName = bestName;
+        string json = JsonUtility.ToJson(data);
+        //string path = Application.persistentDataPath + "/savefile.json";
+        //string json = File.ReadAllText(path);
+        //JsonUtility.FromJsonOverwrite(json, data);
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+    public void OnUI()
+    {
+        Hp_Text.text = "残り" + hp + "回";
+        DateHourText.text = "前回" + ts + "時間前";
+        DateTimeText.text = "lv:" + data.date.Count;
+        bestNameText.text = "目標:" + bestName;
+    }
+
+    public void GetSaveData() //load
+    {
+        //SaveData data = new SaveData();
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            data = JsonUtility.FromJson<SaveData>(json);
+            lastDate_hour = data.lastDate_hour;
+            lastDate_day = data.lastDate_day;
+            bestName = data.bestName;
+            Debug.Log("json" + json);
+            Debug.Log("json" + lastDate_day);
+        }
+        else
+        {
+            Debug.Log("Nodata");
+            Login();
+            lastDate_hour = todayDate_hour;
+            lastDate_day = nowDate.Day;
+            bestName = "ゴール";
+        }
+
+        bestNameText.text = bestName;
+    }
+
+    public void OnRecord()
+    {
+        if (isrecord == false)
+        {
+            record_Ob.SetActive(true);
+            Date100_Text.text = string.Join("\n", data.date);
+            Debug.Log(string.Join("\n", data.date));
+            isrecord = true;
+        }
+        else
+        {
+            record_Ob.SetActive(false);
+            isrecord = false;
+
+        }
+    }
+
+    public void OnReward()
+    {
+        if (isreward == false)
+        {
+            hp += 1;
+            isreward = true;
+        }
+        else
+        {
+            isreward = false;
+        }
+    }
+    public void DeletePath()
+    {
+        if (isdelete == false)
+        {
+            delete_Ob.SetActive(true);
+            delete_Text.text = "OK";
+            delete_Text2.text = "NO";
+            isdelete = true;
+        }
+        else if (isdelete == true)
+        {
+            delete_Ob.SetActive(false);
+            Debug.Log("deletepath");
+            data.lastDate_hour = todayDate_hour;
+            data.lastDate_day = nowDate.Day;
+            data.bestName = "目標:";
+            data.date = new List<string>();
+            //string json = JsonUtility.ToJson(new SaveData());
+            //File.Delete(Application.persistentDataPath + "/savefile.json");
+            delete_Text.text = "記録\nリセット";
+            delete_Text2.text = "記録\nリセット";
+            isdelete = false;
+        }
+    }
+    public void DeletePath2()
+    {
+        if (isdelete == false)
+        {
+            delete_Text.text = "OK";
+            delete_Text2.text = "NO";
+            isdelete = true;
+        }
+        else if (isdelete == true)
+        {
+            delete_Text.text = "記録\nリセット";
+            delete_Text2.text = "記録\nリセット";
+            delete_Ob.SetActive(false);
+            isdelete = false;
+        }
+    }
+
+}
